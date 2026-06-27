@@ -10,6 +10,7 @@
 #include <iostream>
 
 #include <NvInfer.h>
+#include <NvInferVersion.h>
 #include <NvOnnxParser.h>
 
 namespace
@@ -175,8 +176,12 @@ bool ConvertONNXToTRT(
     }
 
     // Create network
+#if NV_TENSORRT_MAJOR >= 10
+    auto network = std::unique_ptr<nvinfer1::INetworkDefinition>( builder->createNetworkV2( 0U ) );
+#else
     const uint32_t explicitBatch = 1U << static_cast<uint32_t>( nvinfer1::NetworkDefinitionCreationFlag::kEXPLICIT_BATCH );
     auto network = std::unique_ptr<nvinfer1::INetworkDefinition>( builder->createNetworkV2( explicitBatch ) );
+#endif
     if ( !network )
     {
         LOG_ERROR( "Could not create network." );
@@ -262,9 +267,18 @@ bool ConvertONNXToTRT(
             }
             auto &sizes = options.shape_tensor_sizes.at( name );
 
-            profile->setShapeValues( name, nvinfer1::OptProfileSelector::kMIN, std::get<0>( sizes ).data(), std::get<0>( sizes ).size());
+#if NV_TENSORRT_MAJOR >= 10
+            const std::vector<int64_t> minValues( std::get<0>( sizes ).begin(), std::get<0>( sizes ).end() );
+            const std::vector<int64_t> optValues( std::get<1>( sizes ).begin(), std::get<1>( sizes ).end() );
+            const std::vector<int64_t> maxValues( std::get<2>( sizes ).begin(), std::get<2>( sizes ).end() );
+            profile->setShapeValuesV2( name, nvinfer1::OptProfileSelector::kMIN, minValues.data(), minValues.size() );
+            profile->setShapeValuesV2( name, nvinfer1::OptProfileSelector::kOPT, optValues.data(), optValues.size() );
+            profile->setShapeValuesV2( name, nvinfer1::OptProfileSelector::kMAX, maxValues.data(), maxValues.size() );
+#else
+            profile->setShapeValues( name, nvinfer1::OptProfileSelector::kMIN, std::get<0>( sizes ).data(), std::get<0>( sizes ).size() );
             profile->setShapeValues( name, nvinfer1::OptProfileSelector::kOPT, std::get<1>( sizes ).data(), std::get<1>( sizes ).size() );
             profile->setShapeValues( name, nvinfer1::OptProfileSelector::kMAX, std::get<2>( sizes ).data(), std::get<2>( sizes ).size() );
+#endif
         }
     }
 
@@ -279,6 +293,7 @@ bool ConvertONNXToTRT(
     // Set the precision level
     if ( options.precision == Precision::FP16 )
     {
+#if NV_TENSORRT_MAJOR < 10
         // Ensure the GPU supports FP16 inference
         if ( !builder->platformHasFastFp16() )
         {
@@ -286,6 +301,9 @@ bool ConvertONNXToTRT(
             return false;
         }
         config->setFlag( nvinfer1::BuilderFlag::kFP16 );
+#else
+        LOG_WARNING( "TensorRT 10+ manages FP16 precision through the network/types; skipping deprecated FP16 builder flag." );
+#endif
     }
 
     // CUDA stream used for profiling by the builder.

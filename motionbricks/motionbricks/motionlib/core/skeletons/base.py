@@ -37,10 +37,10 @@ class SkeletonBase(torch.nn.Module):
         self.dim = len(self.bone_order_names_with_parents)
 
         if load and folder is not None:
-            neutral_joints = torch.load(osp.join(folder, "joints.p")).squeeze()
+            neutral_joints = torch.load(osp.join(folder, "joints.p"), weights_only=False).squeeze()
             self.register_buffer("neutral_joints", neutral_joints, persistent=False)
 
-            joint_parents = torch.load(osp.join(folder, "parents.p"))
+            joint_parents = torch.load(osp.join(folder, "parents.p"), weights_only=False)
             self.register_buffer("joint_parents", joint_parents, persistent=False)
 
         self.bone_order_names = [x for x, y in self.bone_order_names_with_parents]
@@ -108,5 +108,4 @@ class SkeletonBase(torch.nn.Module):
         if self.folder is None:
             return f"{self.__class__.__name__}()"
         return f'{self.__class__.__name__}(folder="{self.folder}")'
-
 

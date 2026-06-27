@@ -168,8 +168,7 @@ def check_tensorrt():
 
 
 def check_disk_space():
-    stat = os.statvfs(".")
-    free_gb = (stat.f_bavail * stat.f_frsize) / (1024**3)
+    free_gb = shutil.disk_usage(".").free / (1024**3)
     ok = free_gb > 10
     return check(
         "Disk space",

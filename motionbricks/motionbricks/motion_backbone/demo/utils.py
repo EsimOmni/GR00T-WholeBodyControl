@@ -61,7 +61,7 @@ class navigation_demo(object):
             self.args.val_dataloader = None
 
         for model_name in ['pose', 'root']:
-            state_dict = t.load(confs[model_name].ckpt_path)['state_dict']
+            state_dict = t.load(confs[model_name].ckpt_path, weights_only=False)['state_dict']
             models[model_name].load_state_dict(state_dict)
         self.inferencer = motion_inference(models, models['pose'].args)
 
@@ -131,5 +131,4 @@ def build_mj_simulator(humanoid_xml: str, fps: int = 30, build_dummy_mj_simulato
 
         mj_model.opt.timestep = 1 / fps
     return mj_model, mj_data
-
 

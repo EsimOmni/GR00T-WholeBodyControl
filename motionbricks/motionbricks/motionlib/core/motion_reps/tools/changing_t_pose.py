@@ -82,7 +82,7 @@ def get_global_offset(
             raise NotImplementedError(
                 f"This skeleton is not supported for t-pose conversion: {skeleton}"
             )
-        joints_orients_with_hands = torch.load(t_pose_path)
+        joints_orients_with_hands = torch.load(t_pose_path, weights_only=False)
 
         skel_slice = skeleton.get_skel_slice(native_skel)
         joints_orients = joints_orients_with_hands[skel_slice]
